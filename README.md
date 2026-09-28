@@ -55,6 +55,21 @@ Environnement virtuel:
 source env/bin/activate
 ```
 
+Créer et configurer le .env:
+```bash
+cp .env.example .env
+```
+
+Initialiser les variables du .env avec les identifiants de snowflake:
+```text
+SNOWFLAKE_ACCOUNT=
+SNOWFLAKE_USER=
+SNOWFLAKE_PASSWORD=
+SNOWFLAKE_WAREHOUSE=
+SNOWFLAKE_DATABASE=
+SNOWFLAKE_SCHEMA=
+```
+
 Lancer l'ingestion:
 ```bash
 pip install -e .
