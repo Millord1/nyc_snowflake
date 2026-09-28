@@ -1,11 +1,29 @@
 import os
+from collections.abc import Generator
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import duckdb
 import requests
 import snowflake.connector
+from dotenv import load_dotenv
+
+from src.config.settings import Urls
+
+load_dotenv()
 
 DATA_DIR = Path("data")
+
+
+@contextmanager
+def temporary_parquet(file_path: Path) -> Generator[Path]:
+    try:
+        yield file_path
+    finally:
+        if file_path.exists():
+            file_path.unlink()
+            print(f"Deleted {file_path}")
 
 
 def download_parquet(year: int, month: int) -> Path:
@@ -14,11 +32,7 @@ def download_parquet(year: int, month: int) -> Path:
     file_name = f"yellow_tripdata_{year}-{month:02d}.parquet"
     file_path = DATA_DIR / file_name
 
-    if file_path.exists():
-        print(f"{file_path} already exists")
-        return file_path
-
-    tlc_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{file_name}"
+    tlc_url = Urls.get_trip_url(file_name)
 
     print(f"Downloading {tlc_url}")
 
@@ -55,9 +69,9 @@ def upload_to_snowflake(file_path: Path) -> None:
     print(f"Uploading {file_path} to Snowflake...")
 
     connection = snowflake.connector.connect(
-        account=os.environ["SNOWFLAKE_ACCOUNT"],
-        user=os.environ["SNOWFLAKE_USER"],
-        password=os.environ["SNOWFLAKE_PASSWORD"],
+        account=os.environ.get("SNOWFLAKE_ACCOUNT"),
+        user=os.environ.get("SNOWFLAKE_USER"),
+        password=os.environ.get("SNOWFLAKE_PASSWORD"),
         warehouse=os.environ.get(
             "SNOWFLAKE_WAREHOUSE",
             "COMPUTE_WH",
@@ -80,7 +94,6 @@ def upload_to_snowflake(file_path: Path) -> None:
             PUT 'file://{file_path.resolve()}'
             @NYC_TAXI.RAW.TLC_STAGE
             AUTO_COMPRESS=FALSE
-            OVERWRITE=TRUE
             """
         )
 
@@ -88,3 +101,44 @@ def upload_to_snowflake(file_path: Path) -> None:
 
     finally:
         connection.close()
+
+
+def copy_into_raw(file_path: Path) -> None:
+    print("Loading data into RAW...")
+
+    connection = snowflake.connector.connect(
+        account=os.environ.get("SNOWFLAKE_ACCOUNT"),
+        user=os.environ.get("SNOWFLAKE_USER"),
+        password=os.environ.get("SNOWFLAKE_PASSWORD"),
+        warehouse=os.environ.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
+        database=os.environ.get("SNOWFLAKE_DATABASE", "NYC_TAXI"),
+        schema=os.environ.get("SNOWFLAKE_SCHEMA", "RAW"),
+    )
+
+    try:
+        cursor = connection.cursor()
+
+        file_name = file_path.name
+
+        cursor.execute(
+            f"""
+            COPY INTO NYC_TAXI.RAW.YELLOW_TAXI
+            FROM @NYC_TAXI.RAW.TLC_STAGE/{file_name}
+            FILE_FORMAT = (
+                FORMAT_NAME = 'NYC_TAXI.RAW.PARQUET_FORMAT'
+            )
+            MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+            """
+        )
+
+        for row in cursor.fetchall():
+            print(row)
+
+    finally:
+        connection.close()
+
+
+def get_previous_month() -> tuple[int, int]:
+    current_date = datetime.now()
+    previous_month = current_date.replace(day=1) - timedelta(days=1)
+    return previous_month.year, previous_month.month
