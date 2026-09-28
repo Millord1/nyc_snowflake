@@ -1,5 +1,4 @@
 import os
-from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -9,136 +8,134 @@ import requests
 import snowflake.connector
 from dotenv import load_dotenv
 
-from src.config.settings import Urls
+from src.config.settings import DATA_DIR, Urls
 
 load_dotenv()
 
-DATA_DIR = Path("data")
 
+class Ingestor:
+    def __init__(self):
+        self.data_dir = DATA_DIR
+        self.file_path: Path | None = None
+        self.file_name: str | None = None
 
-@contextmanager
-def temporary_parquet(file_path: Path) -> Generator[Path]:
-    try:
-        yield file_path
-    finally:
-        if file_path.exists():
-            file_path.unlink()
-            print(f"Deleted {file_path}")
+    def __enter__(self):
+        return self
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file_path and self.file_path.exists():
+            self.file_path.unlink()
+            print(f"Deleted {self.file_path}")
 
-def download_parquet(year: int, month: int) -> Path:
-    DATA_DIR.mkdir(exist_ok=True)
+    def download_parquet(self, year: int, month: int) -> None:
+        self.data_dir.mkdir(exist_ok=True)
 
-    file_name = f"yellow_tripdata_{year}-{month:02d}.parquet"
-    file_path = DATA_DIR / file_name
+        self.file_name = f"yellow_tripdata_{year}-{month:02d}.parquet"
+        self.file_path = self.data_dir / self.file_name
 
-    tlc_url = Urls.get_trip_url(file_name)
+        tlc_url = Urls.get_trip_url(self.file_name)
 
-    print(f"Downloading {tlc_url}")
+        print(f"Downloading {tlc_url}")
 
-    response = requests.get(tlc_url, stream=True)
-    response.raise_for_status()
+        response = requests.get(tlc_url, stream=True)
+        response.raise_for_status()
 
-    with file_path.open("wb") as file:
-        for chunk in response.iter_content(chunk_size=1024 * 1024):
-            if chunk:
-                file.write(chunk)
+        with self.file_path.open("wb") as file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    file.write(chunk)
 
-    print(f"Downloaded {file_path}")
+        print(f"Downloaded {self.file_path}")
 
-    return file_path
+    def validate_with_duckdb(self) -> None:
+        print(f"Validating {self.file_path} with DuckDB...")
 
-
-def validate_with_duckdb(file_path: Path) -> None:
-    print(f"Validating {file_path} with DuckDB...")
-
-    result = duckdb.sql(
-        f"""
-        SELECT
-            COUNT(*) AS row_count,
-            MIN(tpep_pickup_datetime) AS min_date,
-            MAX(tpep_pickup_datetime) AS max_date
-        FROM '{file_path}'
-        """
-    )
-
-    print(result)
-
-
-def upload_to_snowflake(file_path: Path) -> None:
-    print(f"Uploading {file_path} to Snowflake...")
-
-    connection = snowflake.connector.connect(
-        account=os.environ.get("SNOWFLAKE_ACCOUNT"),
-        user=os.environ.get("SNOWFLAKE_USER"),
-        password=os.environ.get("SNOWFLAKE_PASSWORD"),
-        warehouse=os.environ.get(
-            "SNOWFLAKE_WAREHOUSE",
-            "COMPUTE_WH",
-        ),
-        database=os.environ.get(
-            "SNOWFLAKE_DATABASE",
-            "NYC_TAXI",
-        ),
-        schema=os.environ.get(
-            "SNOWFLAKE_SCHEMA",
-            "RAW",
-        ),
-    )
-
-    try:
-        cursor = connection.cursor()
-
-        cursor.execute(
+        result = duckdb.sql(
             f"""
-            PUT 'file://{file_path.resolve()}'
-            @NYC_TAXI.RAW.TLC_STAGE
-            AUTO_COMPRESS=FALSE
+            SELECT
+                COUNT(*) AS row_count,
+                MIN(tpep_pickup_datetime) AS min_date,
+                MAX(tpep_pickup_datetime) AS max_date
+            FROM '{self.file_path}'
             """
         )
 
-        print("Uploaded to Snowflake stage")
+        print(result)
 
-    finally:
-        connection.close()
+    @contextmanager
+    def _get_snowflake_cnx(self):
+        connection = snowflake.connector.connect(
+            account=os.environ["SNOWFLAKE_ACCOUNT"],
+            user=os.environ["SNOWFLAKE_USER"],
+            password=os.environ["SNOWFLAKE_PASSWORD"],
+            warehouse=os.environ.get(
+                "SNOWFLAKE_WAREHOUSE",
+                "COMPUTE_WH",
+            ),
+            database=os.environ.get(
+                "SNOWFLAKE_DATABASE",
+                "NYC_TAXI",
+            ),
+            schema=os.environ.get(
+                "SNOWFLAKE_SCHEMA",
+                "RAW",
+            ),
+        )
 
+        try:
+            yield connection
+        finally:
+            connection.close()
 
-def copy_into_raw(file_path: Path) -> None:
-    print("Loading data into RAW...")
+    def upload_to_snowflake(self) -> None:
+        print(f"Uploading {self.file_path} to Snowflake...")
 
-    connection = snowflake.connector.connect(
-        account=os.environ.get("SNOWFLAKE_ACCOUNT"),
-        user=os.environ.get("SNOWFLAKE_USER"),
-        password=os.environ.get("SNOWFLAKE_PASSWORD"),
-        warehouse=os.environ.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
-        database=os.environ.get("SNOWFLAKE_DATABASE", "NYC_TAXI"),
-        schema=os.environ.get("SNOWFLAKE_SCHEMA", "RAW"),
-    )
+        with self._get_snowflake_cnx() as connection:
+            cursor = connection.cursor()
 
-    try:
-        cursor = connection.cursor()
-
-        file_name = file_path.name
-
-        cursor.execute(
-            f"""
-            COPY INTO NYC_TAXI.RAW.YELLOW_TAXI
-            FROM @NYC_TAXI.RAW.TLC_STAGE/{file_name}
-            FILE_FORMAT = (
-                FORMAT_NAME = 'NYC_TAXI.RAW.PARQUET_FORMAT'
+            cursor.execute(
+                f"""
+                PUT 'file://{self.file_path.resolve()}'
+                @NYC_TAXI.RAW.TLC_STAGE
+                AUTO_COMPRESS=FALSE
+                """
             )
-            MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
-            """
-        )
 
-        for row in cursor.fetchall():
-            print(row)
+            print("Uploaded to Snowflake stage")
 
-    finally:
-        connection.close()
+    def copy_into_raw(self) -> None:
+        print("Loading data into RAW...")
+
+        with self._get_snowflake_cnx() as connection:
+            cursor = connection.cursor()
+
+            cursor.execute(
+                f"""
+                COPY INTO NYC_TAXI.RAW.YELLOW_TAXI
+                FROM @NYC_TAXI.RAW.TLC_STAGE/{self.file_name}
+                FILE_FORMAT = (
+                    FORMAT_NAME = 'NYC_TAXI.RAW.PARQUET_FORMAT'
+                )
+                MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+                """
+            )
+
+            for row in cursor.fetchall():
+                print(row)
+
+    @staticmethod
+    def get_previous_month() -> tuple[int, int]:
+        current_date = datetime.now()
+        previous_month = current_date.replace(day=1) - timedelta(days=1)
+
+        return previous_month.year, previous_month.month
 
 
-def get_previous_month() -> tuple[int, int]:
-    current_date = datetime.now()
-    previous_month = current_date.replace(day=1) - timedelta(days=1)
-    return previous_month.year, previous_month.month
+if __name__ == "__main__":
+    year, month = Ingestor.get_previous_month()
+
+    with Ingestor() as ingestor:
+        ingestor.download_parquet(year, month)
+        ingestor.validate_with_duckdb()
+        ingestor.upload_to_snowflake()
+        ingestor.copy_into_raw()
