@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_yellow_taxi
+    config:
+      tags:
+        - staging
+
+    columns:
+      - name: vendor_id
+        data_tests:
+          - not_null
+
+      - name: pickup_datetime
+        data_tests:
+          - not_null
+
+      - name: dropoff_datetime
+        data_tests:
+          - not_null
+
+      - name: pickup_location_id
+        data_tests:
+          - not_null
+
+      - name: dropoff_location_id
+        data_tests:
+          - not_null
+
+      - name: payment_type
+        data_tests:
+          - not_null
+
+      - name: fare_amount
+        data_tests:
+          - not_null
+
+      - name: total_amount
+        data_tests:
+          - not_null

@@ -1,0 +1,6 @@
+.env
+.ruff_cache
+.vscode
+env
+data/*
+!data/.gitkeep

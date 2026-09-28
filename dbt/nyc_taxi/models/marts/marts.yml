@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: mart_yellow_taxi_daily
+    config:
+      tags:
+        - marts
+
+    columns:
+      - name: trip_date
+        data_tests:
+          - not_null
+          - unique
+
+      - name: trip_count
+        data_tests:
+          - not_null
+
+      - name: total_revenue
+        data_tests:
+          - not_null

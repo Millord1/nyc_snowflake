@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: snowflake
+Version: 1.0.0
+Summary: snowflake ingetsion and dbt
+Requires-Python: <3.13,>=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: duckdb>=1.1.0
+Requires-Dist: requests>=2.32.0
+Requires-Dist: snowflake-connector-python>=3.12.0
+Requires-Dist: python-dotenv>=1.0.1
+Provides-Extra: dev
+Requires-Dist: httpx==0.27.2; extra == "dev"
+Requires-Dist: ruff==0.6.1; extra == "dev"
