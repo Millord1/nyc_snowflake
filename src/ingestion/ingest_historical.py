@@ -4,7 +4,7 @@ from src.ingestion.ingestion import Ingestor
 
 def main() -> None:
     for month in range(START_MONTH, END_MONTH + 1):
-        print(f"Processing {YEAR}-{month:02d}")
+        print(f"Processing {YEAR}-{month:02d}", flush=True)
 
         with Ingestor() as ingestor:
             ingestor.download_parquet(YEAR, month)

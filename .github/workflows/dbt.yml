@@ -1,0 +1,58 @@
+name: dbt NYC Taxi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dbt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dbt
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-snowflake
+
+      - name: Configure dbt
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+        run: |
+          mkdir -p ~/.dbt
+
+          cat > ~/.dbt/profiles.yml <<EOF
+          nyc_taxi:
+            target: dev
+            outputs:
+              dev:
+                type: snowflake
+                account: $SNOWFLAKE_ACCOUNT
+                user: $SNOWFLAKE_USER
+                password: $SNOWFLAKE_PASSWORD
+                role: ACCOUNTADMIN
+                database: NYC_TAXI
+                warehouse: NYC_TAXI_WH
+                schema: STAGING
+                threads: 4
+          EOF
+
+      - name: dbt debug
+        working-directory: dbt/nyc_taxi
+        run: dbt debug
+
+      - name: dbt run
+        working-directory: dbt/nyc_taxi
+        run: dbt run
+
+      - name: dbt test
+        working-directory: dbt/nyc_taxi
+        run: dbt test

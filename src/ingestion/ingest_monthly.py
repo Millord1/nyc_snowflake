@@ -3,11 +3,11 @@ from src.ingestion.ingestion import Ingestor
 
 
 def main() -> None:
-    year = YEAR
-    month = 6
-    # year, month = get_previous_month()
+    # year = YEAR
+    # month = 6
+    year, month = Ingestor.get_previous_month()
 
-    print(f"Processing {year}-{month:02d}")
+    print(f"Processing {year}-{month:02d}", flush=True)
 
     with Ingestor() as ingestor:
         ingestor.download_parquet(YEAR, month)
