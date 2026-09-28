@@ -51,7 +51,7 @@ Le fichier **ingest_monthly.py** est *'fictif'* dans le sens où les data ne sem
 Environnement virtuel:
 
 ```bash
-~/.pyenv/versions/"$version"/bin/python -m venv env
+~/.pyenv/versions/3.12.2/bin/python -m venv env
 source env/bin/activate
 ```
 
