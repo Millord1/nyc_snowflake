@@ -44,7 +44,7 @@ Le fichier **ingest_monthly.py** est *'fictif'* dans le sens où les data ne sem
 
 **ingestion.py** Contient la logique de base de l'ingestion sous forme de Class Python en ctx manager. Cette Class permet de télécharger les fichiers, les ingérer en DuckDB puis supprimer l'historique dans *data/*.
 
-**ingest_historical.py** Lance l'ingestion depuis 2026-01 jusqu'au dernier mois disponible (à ce jour, 2026-06). Il faut donc un certain temps pour que l'ingestion se termine puisqu'on parle de plus de M de rows.
+**ingest_historical.py** Lance l'ingestion depuis 2026-01 jusqu'au dernier mois disponible (à ce jour, 2026-06). Il faut donc un certain temps pour que l'ingestion se termine puisqu'on parle de plus de 78M de rows.
 
 ## Lancer le projet:
 
