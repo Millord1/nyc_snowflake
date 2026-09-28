@@ -27,7 +27,7 @@ class Ingestor:
             self.file_path.unlink()
             print(f"Deleted {self.file_path}")
 
-    def download_parquet(self, year: int, month: int) -> None:
+    def download_parquet(self, year: int, month: int) -> bool:
         self.data_dir.mkdir(exist_ok=True)
 
         self.file_name = f"yellow_tripdata_{year}-{month:02d}.parquet"
@@ -35,9 +35,17 @@ class Ingestor:
 
         tlc_url = Urls.get_trip_url(self.file_name)
 
-        print(f"Downloading {tlc_url}")
+        print(f"Downloading {tlc_url}", flush=True)
 
         response = requests.get(tlc_url, stream=True)
+
+        if response.status_code in (403, 404):
+            print(
+                f"File not available: {self.file_name}. Stopping ingestion.",
+                flush=True,
+            )
+            return False
+
         response.raise_for_status()
 
         with self.file_path.open("wb") as file:
@@ -45,7 +53,9 @@ class Ingestor:
                 if chunk:
                     file.write(chunk)
 
-        print(f"Downloaded {self.file_path}")
+        print(f"Downloaded {self.file_path}", flush=True)
+
+        return True
 
     def validate_with_duckdb(self) -> None:
         print(f"Validating {self.file_path} with DuckDB...")

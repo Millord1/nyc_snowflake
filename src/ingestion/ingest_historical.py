@@ -18,7 +18,14 @@ def main() -> None:
         )
 
         with Ingestor() as ingestor:
-            ingestor.download_parquet(current_year, current_month)
+            downloaded = ingestor.download_parquet(
+                current_year,
+                current_month,
+            )
+
+            if not downloaded:
+                break
+
             ingestor.validate_with_duckdb()
             ingestor.upload_to_snowflake()
             ingestor.copy_into_raw()
