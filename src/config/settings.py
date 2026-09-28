@@ -13,13 +13,11 @@ class Urls(StrEnum):
 
 DATA_DIR = Path("data")
 
-YEAR = 2026
+START_YEAR = 2025
 START_MONTH = 1
 
 CURRENT_YEAR = datetime.now().year
 
-END_MONTH = (
-    (datetime.now().replace(day=1) - timedelta(days=1)).month
-    if YEAR == CURRENT_YEAR
-    else 12
-)
+END_DATE = datetime.now().replace(day=1) - timedelta(days=1)
+END_YEAR = END_DATE.year
+END_MONTH = END_DATE.month
