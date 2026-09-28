@@ -1,4 +1,4 @@
-name: Monthly NYC Taxi ingestion
+name: Historical NYC Taxi ingestion
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
 
-      - name: Run monthly ingestion
+      - name: Run historical ingestion
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
@@ -33,4 +33,4 @@ jobs:
           SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
           SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: |
-          python -m src.ingestion.ingest_monthly
+          python -m src.ingestion.ingest_historical
