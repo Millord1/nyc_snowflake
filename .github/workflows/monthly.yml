@@ -11,6 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check Snowflake configuration
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ vars.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
+        run: |
+          test -n "$SNOWFLAKE_ACCOUNT" && echo "ACCOUNT: OK" || echo "ACCOUNT: MISSING"
+          test -n "$SNOWFLAKE_USER" && echo "USER: OK" || echo "USER: MISSING"
+          test -n "$SNOWFLAKE_PASSWORD" && echo "PASSWORD: OK" || echo "PASSWORD: MISSING"
+          test -n "$SNOWFLAKE_WAREHOUSE" && echo "WAREHOUSE: OK" || echo "WAREHOUSE: MISSING"
+          test -n "$SNOWFLAKE_DATABASE" && echo "DATABASE: OK" || echo "DATABASE: MISSING"
+          test -n "$SNOWFLAKE_SCHEMA" && echo "SCHEMA: OK" || echo "SCHEMA: MISSING"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
