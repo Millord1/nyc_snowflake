@@ -11,22 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Snowflake environment
-        env:
-          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
-        run: |
-          test -n "$SNOWFLAKE_ACCOUNT" && echo "SNOWFLAKE_ACCOUNT: OK" || echo "SNOWFLAKE_ACCOUNT: MISSING"
-          test -n "$SNOWFLAKE_USER" && echo "SNOWFLAKE_USER: OK" || echo "SNOWFLAKE_USER: MISSING"
-          test -n "$SNOWFLAKE_PASSWORD" && echo "SNOWFLAKE_PASSWORD: OK" || echo "SNOWFLAKE_PASSWORD: MISSING"
-          test -n "$SNOWFLAKE_WAREHOUSE" && echo "SNOWFLAKE_WAREHOUSE: OK" || echo "SNOWFLAKE_WAREHOUSE: MISSING"
-          test -n "$SNOWFLAKE_DATABASE" && echo "SNOWFLAKE_DATABASE: OK" || echo "SNOWFLAKE_DATABASE: MISSING"
-          test -n "$SNOWFLAKE_SCHEMA" && echo "SNOWFLAKE_SCHEMA: OK" || echo "SNOWFLAKE_SCHEMA: MISSING"
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -43,10 +27,10 @@ jobs:
       - name: Run monthly ingestion
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_USER: ${{ vars.SNOWFLAKE_USER }}
           SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
         run: |
           python -m src.ingestion.ingest_monthly
